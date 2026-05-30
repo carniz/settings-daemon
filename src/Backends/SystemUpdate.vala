@@ -14,7 +14,6 @@ public class SettingsDaemon.Backends.SystemUpdate : Object {
     }
 
     private const string NOTIFICATION_ID = "system-update";
-    private const string PREPARED_UPDATE_PATH = "/var/lib/PackageKit/prepared-update";
 
     public signal void state_changed ();
 
@@ -61,24 +60,10 @@ public class SettingsDaemon.Backends.SystemUpdate : Object {
             warning ("Couldn't determine last offline results: %s", e.message);
         }
         try {
-            prepared_update_monitor = File.new_for_path (PREPARED_UPDATE_PATH).monitor_file (NONE);
-            prepared_update_monitor.changed.connect ((file, other_file, event) => revalidate_restart_required ());
+            prepared_update_monitor = Pk.offline_get_prepared_monitor ();
+            prepared_update_monitor.changed.connect (() => check_for_updates.begin (true, true));
         } catch (Error e) {
             warning ("Couldn't monitor prepared offline updates: %s", e.message);
-        }
-    }
-
-    private void revalidate_restart_required () {
-        if (current_state.state != RESTART_REQUIRED) {
-            return;
-        }
-
-        try {
-            if (Pk.offline_get_prepared_ids ().length == 0) {
-                update_state (UP_TO_DATE);
-            }
-        } catch (Error e) {
-            warning ("Failed to get offline prepared ids: %s", e.message);
         }
     }
 
@@ -87,10 +72,7 @@ public class SettingsDaemon.Backends.SystemUpdate : Object {
             return;
         }
 
-        if (current_state.state != UP_TO_DATE &&
-            current_state.state != AVAILABLE &&
-            current_state.state != RESTART_REQUIRED &&
-            !force) {
+        if (current_state.state != UP_TO_DATE && current_state.state != AVAILABLE && !force) {
             return;
         }
 
@@ -260,7 +242,6 @@ public class SettingsDaemon.Backends.SystemUpdate : Object {
     }
 
     public async PkUtils.CurrentState get_current_state () throws DBusError, IOError {
-        revalidate_restart_required ();
         return current_state;
     }
 
