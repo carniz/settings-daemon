@@ -59,6 +59,7 @@ public class SettingsDaemon.Backends.SystemUpdate : Object {
         } catch (Error e) {
             warning ("Couldn't determine last offline results: %s", e.message);
         }
+
         try {
             prepared_update_monitor = Pk.offline_get_prepared_monitor ();
             prepared_update_monitor.changed.connect (() => check_for_updates.begin (true, true));
